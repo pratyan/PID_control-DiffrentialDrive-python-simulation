@@ -1,5 +1,8 @@
 import pygame
 import math
+#import tensorflow as tf
+#import keras
+import matplotlib.pyplot as plt
 
 class Envir:
     def __init__(self, dimentions):
@@ -34,13 +37,17 @@ class Robot:
         self.minspeed = 0.02*self.m2p
 
         #PID values
-        self.p = 0.001
-        self.i = 0.01
-        self.d = 0.01
+        self.p = 0.01
+        self.i = 0.0001
+        self.d = 0.03
 
         #PID parametrs
         self.last_error = 0
         self.cum_error = 0
+
+        #for plot
+        self.data_x = []
+        self.data_y = []
 
         #graphics
         self.img = pygame.image.load(robotImg)
@@ -69,22 +76,42 @@ class Robot:
         #PID update
         error = linepos[1] - self.y
         self.cum_error += error;
-        delta_error = error - self.last_error
+        self.delta_error = error - self.last_error
         self.last_error = error
 
-        e_p = error
-        e_i = self.cum_error * 0.1
-        e_d = delta_error/0.1
+        self.e_p = error
+        self.e_i = self.cum_error * 0.1
+        self.e_d = self.delta_error/0.1
 
         self.x += ((self.vl+self.vr)/2)*math.cos(self.theta)*dt
+        self.data_x.append(self.x)
         #self.y -= ((self.vl+self.vr)/2)*math.sin(self.theta)*dt
-        self.y += self.p*e_p + self.i*e_i + self.d*e_d
+        self.y += self.p*self.e_p + self.i*self.e_i + self.d*self.e_d
+        self.data_y.append(self.y)
         self.theta += (self.vr-self.vl)/self.w*dt
 
         self.rotated = pygame.transform.rotozoom(self.img, math.degrees(self.theta),1)
         self.rect = self.rotated.get_rect(center=(self.x, self.y))
 
 
+    def get_value(self):
+        return (self.data_x, self.data_y)
+
+
+    
+    # def model(self):
+    #     input = tf.keras.Input()
+    #     hd1 = tf.keras.layers.Dense(3,activation='relu',kernel_initializer='he_normal')(data)
+    #     output = tf.keras.layers.Dense(1,activation='linear',kernel_initializer='he_normal')(hd1)
+    #     Model = tf.keras.Model(input=data,output=output)
+    #     loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    #     Model.compile(loss=loss,optimizer='Adam',metrics=['accuracy'])
+    #     return Model
+
+    # def train_model(self):
+    #     input_data = tf.Variable([self.last_error,self.cum_error,self.delta_error])
+    #     m = self.model(input_data,linepos[1]-self.y)
+    #     m.fit()
 
 #initialisation
 pygame.init() 
@@ -133,4 +160,14 @@ while running:
     pygame.draw.line(environment.map, (255,0,0), linepos, (1500, linepos[1]))
     robot.move()
     robot.draw(environment.map)
-            
+
+
+#for ploting            
+(x, y) = robot.get_value()
+plt.plot(x,y)
+
+plt.xlabel('x-axis')
+plt.ylabel('y-axis')
+plt.title('graph')
+
+plt.show()
